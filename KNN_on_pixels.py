@@ -3,7 +3,7 @@ import seaborn as sns
 import data_utils
 import numpy as np
 from time import time
-from sklearn import svm
+from sklearn.neighbors import KNeighborsClassifier
 from sklearn import metrics
 from sklearn.model_selection import GridSearchCV
 
@@ -38,11 +38,11 @@ X_val, y_val = data_utils.load_samples(handler, 'validation', grey_scale=True)
 X_train_pca, X_val_pca, pca = data_utils.compute_pca(
         X_train=X_train, n_comp=n_comp, X_test=X_val)
 
-### Train an SVM classification model
-param_grid = {'C': 10.**np.arange(-4, 4, 1),
-              'gamma': 10.**np.arange(-4, 4, 1)}
+### Train an one vs. all Logistic Regression model
+param_grid = {"n_neighbors": np.arange(1, 31, 2)}
 
-clf = GridSearchCV(svm.SVC(kernel='rbf'), param_grid)
+knn = KNeighborsClassifier(metric="euclidean") 
+clf = GridSearchCV(estimator=knn, param_grid=param_grid, cv= 10)
 
 t0 = time()
 clf = clf.fit(X_train_pca, y_train)
@@ -53,22 +53,22 @@ acc_score = [x[1] for x in clf.grid_scores_]
 
 plt.figure(figsize=(6, 4))
 ax = plt.gca()
-ax.plot(np.log(clf.param_grid['C'])/np.log(10), acc_score)
-plt.xlabel('C (Log)')
+ax.plot(clf.param_grid['n_neighbors'], acc_score)
+plt.xlabel('Number of Neighbors (N)')
 plt.ylabel('Validation Accuracy Score')
-plt.title('Validation Accuracy Score as a function of the Parameter C')
+plt.title('Validation Accuracy Score as a function of N')
 plt.axis('tight')
 
-sv = svm.SVC(kernel='rbf', C=10, gamma=0.01)
-sv.fit(X_train_pca, y_train)
+knn = KNeighborsClassifier(metric="euclidean",n_neighbors=10) 
+knn.fit(X_train_pca, y_train)
 
-y_pred = sv.predict(X_val_pca)
+y_pred = knn.predict(X_val_pca)
 print(metrics.classification_report(y_val, y_pred, target_names=classNames.values()))
 
-conf_sv = metrics.confusion_matrix(y_val, y_pred)
+conf_knn = metrics.confusion_matrix(y_val, y_pred)
 
-sns.heatmap(conf_sv, cmap='hot')
-plt.title('SVM Confusion Matrix', fontsize=12)
+sns.heatmap(conf_knn, cmap='hot')
+plt.title('KNN Confusion Matrix', fontsize=12)
 plt.ylabel('Actual', fontsize=12)
 plt.xlabel('Predicted', fontsize=12)
 plt.ylabel('Actual', fontsize=12)
@@ -77,3 +77,6 @@ plt.yticks(range(n_classes), classNames.values(), fontsize=10, rotation='horizon
 plt.xticks(range(n_classes), classNames.values(), fontsize=10, rotation='vertical')
 
 accuracy = np.sum(y_val == y_pred) / len(y_val)
+
+
+

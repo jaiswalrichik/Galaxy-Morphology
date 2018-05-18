@@ -22,8 +22,6 @@ classNames = {0: 'Disc',
               3: 'Round',
               4: 'Other'}
 
-n_comp = 200
-
 handler = data_utils.data_handler(data_dir_path, sample_fractions=sample_fractions, 
                               input_size=input_size, labels_type='classes', 
                               output_size=output_size, normalize_input=False, 
@@ -31,12 +29,8 @@ handler = data_utils.data_handler(data_dir_path, sample_fractions=sample_fractio
                               crp_factor=2, ds_factor=3)
     
 ### Load data
-X_train, y_train = data_utils.load_samples(handler, 'training', grey_scale=True)    
-X_val, y_val = data_utils.load_samples(handler, 'validation', grey_scale=True)    
-
-### Perform PCA
-X_train_pca, X_val_pca, pca = data_utils.compute_pca(
-        X_train=X_train, n_comp=n_comp, X_test=X_val)
+X_train, y_train = data_utils.load_features(handler, 'training')    
+X_val, y_val = data_utils.load_features(handler, 'validation')    
 
 ### Train an SVM classification model
 param_grid = {'C': 10.**np.arange(-4, 4, 1),
@@ -45,7 +39,7 @@ param_grid = {'C': 10.**np.arange(-4, 4, 1),
 clf = GridSearchCV(svm.SVC(kernel='rbf'), param_grid)
 
 t0 = time()
-clf = clf.fit(X_train_pca, y_train)
+clf = clf.fit(X_train, y_train)
 print("done in %0.3fs" % (time() - t0))
 print(clf.best_estimator_)
 
@@ -60,9 +54,9 @@ plt.title('Validation Accuracy Score as a function of the Parameter C')
 plt.axis('tight')
 
 sv = svm.SVC(kernel='rbf', C=10, gamma=0.01)
-sv.fit(X_train_pca, y_train)
+sv.fit(X_train, y_train)
 
-y_pred = sv.predict(X_val_pca)
+y_pred = sv.predict(X_val)
 print(metrics.classification_report(y_val, y_pred, target_names=classNames.values()))
 
 conf_sv = metrics.confusion_matrix(y_val, y_pred)

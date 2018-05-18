@@ -3,7 +3,7 @@ import seaborn as sns
 import data_utils
 import numpy as np
 from time import time
-from sklearn import svm
+from sklearn.ensemble import RandomForestClassifier
 from sklearn import metrics
 from sklearn.model_selection import GridSearchCV
 
@@ -38,11 +38,13 @@ X_val, y_val = data_utils.load_samples(handler, 'validation', grey_scale=True)
 X_train_pca, X_val_pca, pca = data_utils.compute_pca(
         X_train=X_train, n_comp=n_comp, X_test=X_val)
 
-### Train an SVM classification model
-param_grid = {'C': 10.**np.arange(-4, 4, 1),
-              'gamma': 10.**np.arange(-4, 4, 1)}
+### Train an one vs. all Logistic Regression model
+param_grid = {"n_estimators" : [9, 18, 27, 36, 45, 54, 63],
+              "max_depth" : [1, 5, 10, 15, 20, 25, 30],
+              "min_samples_leaf" : [1, 2, 4, 6, 8, 10]}
 
-clf = GridSearchCV(svm.SVC(kernel='rbf'), param_grid)
+rfc = RandomForestClassifier(n_jobs=-1, max_features='sqrt', oob_score = True) 
+clf = GridSearchCV(estimator=rfc, param_grid=param_grid, cv= 10)
 
 t0 = time()
 clf = clf.fit(X_train_pca, y_train)
@@ -59,16 +61,16 @@ plt.ylabel('Validation Accuracy Score')
 plt.title('Validation Accuracy Score as a function of the Parameter C')
 plt.axis('tight')
 
-sv = svm.SVC(kernel='rbf', C=10, gamma=0.01)
-sv.fit(X_train_pca, y_train)
+rfc = RandomForestClassifier(n_jobs=-1, n_estimators=45, max_depth=20, min_samples_leaf = 10, max_features='sqrt', oob_score = True) 
+rfc.fit(X_train_pca, y_train)
 
-y_pred = sv.predict(X_val_pca)
+y_pred = rfc.predict(X_val_pca)
 print(metrics.classification_report(y_val, y_pred, target_names=classNames.values()))
 
-conf_sv = metrics.confusion_matrix(y_val, y_pred)
+conf_rfc = metrics.confusion_matrix(y_val, y_pred)
 
-sns.heatmap(conf_sv, cmap='hot')
-plt.title('SVM Confusion Matrix', fontsize=12)
+sns.heatmap(conf_rfc, cmap='hot')
+plt.title('Random Forest Confusion Matrix', fontsize=12)
 plt.ylabel('Actual', fontsize=12)
 plt.xlabel('Predicted', fontsize=12)
 plt.ylabel('Actual', fontsize=12)
@@ -77,3 +79,6 @@ plt.yticks(range(n_classes), classNames.values(), fontsize=10, rotation='horizon
 plt.xticks(range(n_classes), classNames.values(), fontsize=10, rotation='vertical')
 
 accuracy = np.sum(y_val == y_pred) / len(y_val)
+
+
+
